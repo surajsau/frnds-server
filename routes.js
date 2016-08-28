@@ -1,17 +1,8 @@
-var firebase = require('firebase');
-
-firebase.initializeApp({
-	databaseURL: "https://frnds-b52ab.firebaseio.com/",
-	serviceAccount: "frnds-751c6ed13c25.json"
-});
-
-var db = firebase.database();
-
 var invalidParamRes = {successful: 'false', error: '1.INP', message: 'Something\'s wrong'};
 var unsuccessfulTransactionRes = {successful: 'false', error: '2.FUP', message: 'Something\'s wrong in the back. Please try again later.'};
 var successfulTransaction = {successful: 'true', error: null, message: null};
 
-var appRouter = function(app) {
+var appRouter = function(app, db) {
 
 	/*
 		POST: /v0/updateTrack
@@ -71,13 +62,6 @@ var appRouter = function(app) {
 				}
 			});
 		}
-	});
-
-	/*
-		
-	*/
-	app.post("", function(req, res){
-
 	});
 
 }
