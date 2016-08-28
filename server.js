@@ -32,29 +32,43 @@ var tracksRef = db.ref("data/tracks");
 
 app.listen(port);
 
-// tracksRef.on("child_changed", function(snapshot, prevChildKey){
-// 	var changedChild = snapshot.val();
-// 	console.log(changedChild);
+tracksRef.on("child_changed", function(snapshot){
+	var changedChild = snapshot.val();
+	console.log(changedChild);
 
-// 	var finalNotificationObject = Object();
+	async.parallel([
+		//-- 0 -deviceId
+		function(callback){
+			getDeviceIdFromDb(changedChild.to, function(deviceId)){
+				callback(null, deviceId);
+			})
+		},
+		//-- 1 -username
+		function(callback){
+			getUserDetailsFromFb(changedChild.to, changedChild.fbToken, function(name){
+				callback(null, name);
+			})
+		},
+		//-- 2 -trackurl
+		//-- 3 -trackname
+		function(callback){
+			getTrackDetailsFromTrackId(changedChild.trackId, function(track){
+				var jsonTrack = JSON.parse(JSON.stringify(track));
+				console.log(jsonTrack['stream_url']);
+				callback(null, jsonTrack['stream_url']);
+				callback(null, jsonTrack['title']);
+			})
+		},
+	], function(error, results){
+		if(error)
+			console.log(error);
+		else {
+			console.log(results);
+			pushNotificationToFCM(results[0], results[1], results[2], results[3], changedChild.name);
+		}
+	});
+});
 
-// 	async.parallel([
-// 			getTrackDetailsFromTrackId(changedChild.trackId, function(track){
-// 				var jsonTrack = JSON.parse(JSON.stringify(track));
-// 				console.log(jsonTrack['stream_url']);
-// 				finalNotificationObject.trackUrl = jsonTrack['stream_url'];
-// 			}),
-
-// 			getUserDetailsFromFb(changedChild.)
-// 		], function(error, results){
-// 		if(error)
-// 			console.log(error);
-// 		else
-// 			console.log(results);
-// 	});
-
-// });
-getUserDetailsFromFb("-KQEPGB6Hy_K_krhaVg5");
 console.log('listening on port: ' + port);
 
 //------------------------functions--------------------------//
@@ -79,28 +93,22 @@ function getTrackDetailsFromTrackId(trackId, getTrack) {
 	});
 }
 
-function getUserDetailsFromFb(uId) {
-	tracksRef.child("" + uId + "/fbId").once('value', function(snapshot){
-		var fbId = snapshot.val();
-		console.log("fbId: " + fbId);
-		facebook.setAccessToken("e5f24c347b26646dc803378845c1d2ef");
-		facebook.api("" + fbId, {fields: ['name', 'gender']}, function(response){
-			if(response && !response.error){
-				console.log(response.name + " .. " + response.gender);
-			} else {
-				console.log(response.error);
-			}
-		});
+function getUserDetailsFromFb(fbId, fbToken, getName) {	
+	facebook.setAccessToken(fbToken)
+	facebook.api("" + fbId, function(response){
+		if(response && !response.error){
+			getName(response.name);
+		}
 	});
 }
 
-function pushNotificationToFCM(deviceId, friendName, trackName, trackUrl, userId,
-							isLastSongPlayedByUser, name, isFriendMale) {
-	console.log('name: ' + name 
-		+ ' trackName: ' + trackName 
-		+ ' trackUrl: ' + trackUrl 
-		+ ' userId: ' + userId
-		+ ' deviceId: ' + deviceId);
+function getDeviceIdFromDb(fbId, getDeviceId) {
+	tracksRef.child("" + fbId + "/deviceId").once("value", function(snapshot){
+		getDeviceId(snapshot.val());
+	});
+}
+
+function pushNotificationToFCM(deviceId, friendName, trackUrl, trackName, name) {
 	request({
 		url: 'https://fcm.googleapis.com/fcm/send',
 		method: 'POST',
@@ -110,15 +118,13 @@ function pushNotificationToFCM(deviceId, friendName, trackName, trackUrl, userId
 		},
 		body: JSON.stringify(
 			{
-				"to":deviceId,
+				"to": "" + deviceId,
 				"data": {
 					"message": {
 						"friendName":"" + friendName,
 						"trackName":"" + trackName,
 						"trackUrl":"" + trackUrl,
-						"isLastSongPlayedByUser":isLastSongPlayedByUser,
-						"name":"" + name,
-						"isFriendMale":isFriendMale
+						"name":"" + name
 					}
 				}	
 			}
