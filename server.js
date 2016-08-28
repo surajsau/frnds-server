@@ -2,7 +2,11 @@ var request = require('request');
 var express = require('express');
 var bodyParser = require('body-parser');
 var soundcloud = require('node-soundcloud');
+
 var app = express();
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: true}));
+
 var routes = require('./routes.js')(app);
 
 var port = 50000;
@@ -13,9 +17,6 @@ soundcloud.init({
 	id: '9822cd32a85be0503a7492f74890a6fc',
 	secret:'7fbd6324c07ac1ccc1b8fb41fee57d80'
 });
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended: true}));
 
 //----------------------playground---------------------//
 
