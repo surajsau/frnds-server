@@ -34,29 +34,22 @@ app.listen(port);
 
 tracksRef.on("child_changed", function(snapshot){
 	var changedChild = snapshot.val();
-	console.log(changedChild);
+	console.log("Change is: " + changedChild);
 
 	async.parallel([
-		//-- 0 -deviceId
+		//-- 0 -to
 		function(callback){
-			getDeviceIdFromDb(changedChild.to, function(deviceId)){
-				callback(null, deviceId);
+			getUserDetailsFromToField(changedChild.to, function(to){
+				console.log("TO:" + to.deviceId + ".." + to.name);
+				callback(null, to);
 			})
 		},
-		//-- 1 -username
-		function(callback){
-			getUserDetailsFromFb(changedChild.to, changedChild.fbToken, function(name){
-				callback(null, name);
-			})
-		},
-		//-- 2 -trackurl
-		//-- 3 -trackname
+		//-- 1 -track
 		function(callback){
 			getTrackDetailsFromTrackId(changedChild.trackId, function(track){
 				var jsonTrack = JSON.parse(JSON.stringify(track));
-				console.log(jsonTrack['stream_url']);
-				callback(null, jsonTrack['stream_url']);
-				callback(null, jsonTrack['title']);
+				console.log("STREAM:" + jsonTrack);
+				callback(null, jsonTrack);
 			})
 		},
 	], function(error, results){
@@ -64,7 +57,11 @@ tracksRef.on("child_changed", function(snapshot){
 			console.log(error);
 		else {
 			console.log(results);
-			pushNotificationToFCM(results[0], results[1], results[2], results[3], changedChild.name);
+			pushNotificationToFCM(results[0].deviceId,
+								 results[0].name,
+								 results[1]['stream_url'],
+								 results[1]['title'],
+								 changedChild.name);
 		}
 	});
 });
@@ -93,22 +90,13 @@ function getTrackDetailsFromTrackId(trackId, getTrack) {
 	});
 }
 
-function getUserDetailsFromFb(fbId, fbToken, getName) {	
-	facebook.setAccessToken(fbToken)
-	facebook.api("" + fbId, function(response){
-		if(response && !response.error){
-			getName(response.name);
-		}
+function getUserDetailsFromToField(fbId, getDetails) {
+	tracksRef.child("" + fbId).once("value", function(snapshot){
+		getDetails(snapshot.val());
 	});
 }
 
-function getDeviceIdFromDb(fbId, getDeviceId) {
-	tracksRef.child("" + fbId + "/deviceId").once("value", function(snapshot){
-		getDeviceId(snapshot.val());
-	});
-}
-
-function pushNotificationToFCM(deviceId, friendName, trackUrl, trackName, name) {
+function pushNotificationToFCM(deviceId, name, trackUrl, trackName, friendName) {
 	request({
 		url: 'https://fcm.googleapis.com/fcm/send',
 		method: 'POST',
@@ -119,13 +107,14 @@ function pushNotificationToFCM(deviceId, friendName, trackUrl, trackName, name) 
 		body: JSON.stringify(
 			{
 				"to": "" + deviceId,
-				"data": {
-					"message": {
+				"notification": {
+					"body": {
 						"friendName":"" + friendName,
 						"trackName":"" + trackName,
 						"trackUrl":"" + trackUrl,
 						"name":"" + name
 					}
+
 				}	
 			}
 		)

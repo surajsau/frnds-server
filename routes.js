@@ -6,7 +6,7 @@ var appRouter = function(app, db) {
 
 	/*
 		POST: /v0/updateTrack
-		{trackId: "sample", uId: "sample", to: "to uId", accessToken: "accessToken"}
+		{trackId: "sample", uId: "sample", to: "to uId"}
 	*/
 	app.post("/v0/updateTrack", function(req, res){
 		if(!req.body.trackId || !req.body.uId || !req.body.to) {
@@ -16,8 +16,7 @@ var appRouter = function(app, db) {
 			tracksRef.child("" + req.body.uId).update(
 				{
 					trackId: "" + req.body.trackId,
-					to: "" + req.body.to,
-					token: "" + req.header('fbToken')
+					to: "" + req.body.to
 				}, function(error){
 				if(error)
 					res.send(unsuccessfulTransactionRes);
