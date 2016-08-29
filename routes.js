@@ -6,14 +6,14 @@ var appRouter = function(app, db) {
 
 	/*
 		POST: /v0/updateTrack
-		{trackId: "sample", uId: "sample", to: "to uId"}
+		{trackId: "sample", fbId: "sample", to: "to uId"}
 	*/
 	app.post("/v0/updateTrack", function(req, res){
-		if(!req.body.trackId || !req.body.uId || !req.body.to) {
+		if(!req.body.trackId || !req.body.fbId || !req.body.to) {
 			res.send(invalidParamRes);
 		} else {
 			var tracksRef = db.ref("data/tracks");
-			tracksRef.child("" + req.body.uId).update(
+			tracksRef.child("" + req.body.fbId).update(
 				{
 					trackId: "" + req.body.trackId,
 					to: "" + req.body.to
