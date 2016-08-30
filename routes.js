@@ -1,8 +1,25 @@
+var async = require('async');
+var firebase = require('firebase');
+var soundcloud = require('node-soundcloud');
+var request = require('request');
+
+soundcloud.init({
+	id: '9822cd32a85be0503a7492f74890a6fc',
+	secret:'7fbd6324c07ac1ccc1b8fb41fee57d80'
+});
+
+firebase.initializeApp({
+	databaseURL: "https://frnds-b52ab.firebaseio.com/",
+	serviceAccount: "frnds-751c6ed13c25.json"
+});
+
 var invalidParamRes = {successful: 'false', error: '1.INP', message: 'Something\'s wrong'};
 var unsuccessfulTransactionRes = {successful: 'false', error: '2.FUP', message: 'Something\'s wrong in the back. Please try again later.'};
 var successfulTransaction = {successful: 'true', error: null, message: null};
 
 var appRouter = function(app, db) {
+	var db = firebase.database();
+	var tracksRef = db.ref("data/tracks");
 
 	/*
 		POST: /v0/updateTrack
@@ -12,17 +29,74 @@ var appRouter = function(app, db) {
 		if(!req.body.trackId || !req.body.fbId || !req.body.to) {
 			res.send(invalidParamRes);
 		} else {
-			var tracksRef = db.ref("data/tracks");
-			tracksRef.child("" + req.body.fbId).update(
-				{
-					trackId: "" + req.body.trackId,
-					to: "" + req.body.to,
-					from: ""+ req.body.fbId
-				}, function(error){
+			async.parallel([
+				//-- 0 to
+				function(callback){
+					getUserDetailsFromToField(req.body.to, function(to){
+						console.log("TO:" + to.deviceId + ".." + to.name);
+						callback(null, to);
+					})
+				},
+				//--1 from
+				function(callback){
+					getUserDetailsFromToField(req.body.fbId, function(from){
+						console.log("FROM:" + from.deviceId + ".." + from.name);
+						callback(null, from);
+					})
+				},
+				//-- 2 track
+				function(callback){
+					getTrackDetailsFromTrackId(req.body.trackId, function(track){
+						var jsonTrack = JSON.parse(JSON.stringify(track));
+						console.log("STREAM:" + jsonTrack);
+						callback(null, jsonTrack);
+					})
+				},
+			], function(error, callback){
 				if(error)
-					res.send(unsuccessfulTransactionRes);
-				else
-					res.send(successfulTransaction);
+					console.log(error);
+				else {
+					console.log(callback);
+					pushNotificationToFCM(callback[0].deviceId,
+										 callback[1].name,
+										 callback[2]['stream_url'],
+										 callback[2]['title']);
+				}
+			});
+
+			async.parallel([
+				function(callback){
+					tracksRef.child("" + req.body.fbId).update(
+						{
+							trackId: "" + req.body.trackId,
+							to: "" + req.body.to
+						}, function(error){
+						if(error)
+							callback(null, false);
+						else
+							callback(null, true);
+					});
+				},
+				function(callback){
+					tracksRef.child("" + req.body.to).update(
+						{
+							from: "" + req.body.fbId
+						}, function(error){
+						if(error)
+							callback(null, false);
+						else
+							callback(null, true);
+					});
+				}
+			], function(error, callback){
+				if(error)
+					console.log(error);
+				else {
+					if(callback[0] && callback[1])
+						res.send(successfulTransaction);
+					else
+						res.send(unsuccessfulTransactionRes);
+				}
 			});
 		}
 	});
@@ -37,7 +111,6 @@ var appRouter = function(app, db) {
 		if(!req.body.fbId || !req.body.name) {
 			res.send(invalidParamRes); 
 		} else {
-			var tracksRef = db.ref("data/tracks");
 			tracksRef.child("" + req.body.fbId).once('value',function(snapshot){
 				if(snapshot.val()==null){
 					tracksPushRef = tracksRef.child(req.body.fbId);
@@ -59,13 +132,12 @@ var appRouter = function(app, db) {
 
 	/*
 		POST: /v0/registerGCM
-		{uId: "uId", deviceId: "deviceId"}
+		{fbId: "uId", deviceId: "deviceId"}
 	*/
 	app.post("/v0/registerGCM", function(req, res){
 		if(!req.body.fbId || !req.body.deviceId) {
 			res.send(invalidParamRes);
 		} else {
-			var tracksRef = db.ref("data/tracks");
 			tracksRef.child("" + req.body.fbId).update({deviceId: "" + req.body.deviceId}, function(error){
 				if(error) {
 					res.send(unsuccessfulTransactionRes);
@@ -83,7 +155,6 @@ var appRouter = function(app, db) {
 		if(!req.body.fbId || !req.body.fbToken){
 			res.send(invalidParamRes);
 		} else {
-			var tracksRef = db.ref("data/tracks");
 			tracksRef.child("" + req.body.fbId).update({fbToken: "" + req.body.fbToken},function(error){
 				if(error)
 					res.send(unsuccessfulTransactionRes);
@@ -95,6 +166,56 @@ var appRouter = function(app, db) {
 	/*
 	POST: /vo/
 	*/
+
+	function requestCallback(error, response, body) {
+		if(error)
+			console.error(error, response, body);
+		else if(response.statusCode >= 400)
+			console.error('HTTP Error: ' + response.statusCode + ' - ' + response.statusMessage);
+		else
+			console.log('Done!')
+	}
+
+	//sample trackId : "13158665"
+	function getTrackDetailsFromTrackId(trackId, getTrack) {
+		soundcloud.get('/tracks/' + trackId, function(err, track){
+			if(err)
+				console.log(err)
+			else {
+				getTrack(track);
+			}
+		});
+	}
+
+	function getUserDetailsFromToField(fbId, getDetails) {
+		tracksRef.child("" + fbId).once("value", function(snapshot){
+			getDetails(snapshot.val());
+		});
+	}
+
+	function pushNotificationToFCM(deviceId, friendName, trackUrl, trackName) {
+		request({
+			url: 'https://fcm.googleapis.com/fcm/send',
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': 'key=AIzaSyBjcs3aRjGxmqu57xp2choSNrIDUm1v7-I'
+			},
+			body: JSON.stringify(
+				{
+					"to": "" + deviceId,
+					"notification": {
+						"body": {
+							"friendName":"" + friendName,
+							"trackName":"" + trackName,
+							"trackUrl":"" + trackUrl
+						}
+
+					}	
+				}
+			)
+		}, requestCallback);
+	}
 
 }
 
