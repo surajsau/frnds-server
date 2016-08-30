@@ -16,7 +16,8 @@ var appRouter = function(app, db) {
 			tracksRef.child("" + req.body.fbId).update(
 				{
 					trackId: "" + req.body.trackId,
-					to: "" + req.body.to
+					to: "" + req.body.to,
+					from: ""+ req.body.fbId
 				}, function(error){
 				if(error)
 					res.send(unsuccessfulTransactionRes);
@@ -37,28 +38,35 @@ var appRouter = function(app, db) {
 			res.send(invalidParamRes); 
 		} else {
 			var tracksRef = db.ref("data/tracks");
-			var tracksPushRef = tracksRef.push();
-			tracksPushRef.set({fbId: "" + req.body.fbId, name: "" + req.body.name}, function(error){
-				if(error)
-					res.send(unsuccessfulTransactionRes);
-				else {
-					var uId = tracksPushRef.key;
-					res.send({uId: "" + uId});
+			tracksRef.child("" + req.body.fbId).once('value',function(snapshot){
+				if(snapshot.val()==null){
+					tracksPushRef = tracksRef.child(req.body.fbId);
+					tracksPushRef.set({name: "" + req.body.name}, function(error){
+						if(error)
+							res.send(unsuccessfulTransactionRes);
+						else {
+							res.send(successfulTransaction);
+						}
+					});
+				}
+				else{
+					res.send(successfulTransaction);
 				}
 			});
 		}
 	});
+
 
 	/*
 		POST: /v0/registerGCM
 		{uId: "uId", deviceId: "deviceId"}
 	*/
 	app.post("/v0/registerGCM", function(req, res){
-		if(!req.body.uId || !req.body.deviceId) {
+		if(!req.body.fbId || !req.body.deviceId) {
 			res.send(invalidParamRes);
 		} else {
 			var tracksRef = db.ref("data/tracks");
-			tracksRef.child("" + req.body.uId).update({deviceId: "" + req.body.deviceId}, function(error){
+			tracksRef.child("" + req.body.fbId).update({deviceId: "" + req.body.deviceId}, function(error){
 				if(error) {
 					res.send(unsuccessfulTransactionRes);
 				} else {
@@ -67,6 +75,26 @@ var appRouter = function(app, db) {
 			});
 		}
 	});
+	/*
+		POST: /vo/refreshFbToken
+		{fbId: "fbId", fbToken: "fbToken"}
+	*/
+	app.post("/v0/refreshFbToken",function(req,res){
+		if(!req.body.fbId || !req.body.fbToken){
+			res.send(invalidParamRes);
+		} else {
+			var tracksRef = db.ref("data/tracks");
+			tracksRef.child("" + req.body.fbId).update({fbToken: "" + req.body.fbToken},function(error){
+				if(error)
+					res.send(unsuccessfulTransactionRes);
+				else
+					res.send(successfulTransaction);
+			})
+		}
+	});
+	/*
+	POST: /vo/
+	*/
 
 }
 
