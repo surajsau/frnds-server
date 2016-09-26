@@ -22,6 +22,43 @@ var appRouter = function(app, db) {
 	var tracksRef = db.ref("data/tracks");
 
 	/*
+		POST: /v0/sendMessage
+		{message: "message", fbId: "sample", to: "to uId"}
+	*/
+	app.post("/v0/sendMessage", function(req, res){
+		if(!req.body.message || !req.body.fbId || !req.body.to) {
+			res.send(invalidParamRes);
+		} else {
+			async.parallel([
+				//-- 0 to
+				function(callback){
+					getUserDetailsFromToField(req.body.to, function(to){
+						console.log("TO:" + to.deviceId + ".." + to.name);
+						callback(null, to);
+					})
+				},
+				//--1 from
+				function(callback){
+					getUserDetailsFromToField(req.body.fbId, function(from){
+						console.log("FROM:" + from.deviceId + ".." + from.name);
+						callback(null, from);
+					})
+				}
+			], function(error, callback){
+				if(error)
+					console.log(error);
+				else {
+					console.log(callback);
+					pushNotificationToFCM(callback[0].deviceId,
+										 callback[1].name,
+										 callback[2]['stream_url'],
+										 callback[2]['title']);
+				}
+			});
+		}
+	});
+
+	/*
 		POST: /v0/updateTrack
 		{trackId: "sample", fbId: "sample", to: "to uId"}
 	*/
@@ -57,7 +94,7 @@ var appRouter = function(app, db) {
 					console.log(error);
 				else {
 					console.log(callback);
-					pushNotificationToFCM(callback[0].deviceId,
+					pushTrackNotificationToFCM(callback[0].deviceId,
 										 callback[1].name,
 										 callback[2]['stream_url'],
 										 callback[2]['title']);
@@ -193,7 +230,7 @@ var appRouter = function(app, db) {
 		});
 	}
 
-	function pushNotificationToFCM(deviceId, friendName, trackUrl, trackName) {
+	function pushTrackNotificationToFCM(deviceId, friendName, trackUrl, trackName) {
 		request({
 			url: 'https://fcm.googleapis.com/fcm/send',
 			method: 'POST',
@@ -209,6 +246,29 @@ var appRouter = function(app, db) {
 							"friendName":"" + friendName,
 							"trackName":"" + trackName,
 							"trackUrl":"" + trackUrl
+						}
+
+					}	
+				}
+			)
+		}, requestCallback);
+	}
+
+	function pushTrackNotificationToFCM(deviceId, friendName, message) {
+		request({
+			url: 'https://fcm.googleapis.com/fcm/send',
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': 'key=AIzaSyBjcs3aRjGxmqu57xp2choSNrIDUm1v7-I'
+			},
+			body: JSON.stringify(
+				{
+					"to": "" + deviceId,
+					"notification": {
+						"body": {
+							"friendName":"" + friendName,
+							"message":"" + message
 						}
 
 					}	
