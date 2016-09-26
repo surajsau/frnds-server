@@ -167,7 +167,7 @@ var appRouter = function(app, db) {
 	POST: /vo/
 	*/
 
-	function requestCallback(error, response, body) {
+	function requestCallback(error, response, body){
 		if(error)
 			console.error(error, response, body);
 		else if(response.statusCode >= 400)
@@ -177,7 +177,7 @@ var appRouter = function(app, db) {
 	}
 
 	//sample trackId : "13158665"
-	function getTrackDetailsFromTrackId(trackId, getTrack) {
+	function getTrackDetailsFromTrackId(trackId, getTrack){
 		soundcloud.get('/tracks/' + trackId, function(err, track){
 			if(err)
 				console.log(err)
