@@ -25,7 +25,7 @@ var appRouter = function(app, db) {
 		POST: /v0/sendMessage
 		{message: "message", fbId: "sample", to: "to uId"}
 	*/
-	app.put("/v0/sendMessage", function(req, res){
+	app.post("/v0/sendMessage", function(req, res){
 		console.log(req.body);
 		if(!req.body.message || !req.body.fbId || !req.body.to) {
 			res.send(invalidParamRes);
@@ -63,7 +63,7 @@ var appRouter = function(app, db) {
 		POST: /v0/updateTrack
 		{trackId: "sample", fbId: "sample", to: "to uId"}
 	*/
-	app.put("/v0/updateTrack", function(req, res){
+	app.post("/v0/updateTrack", function(req, res){
 		if(!req.body.trackId || !req.body.fbId || !req.body.to) {
 			res.send(invalidParamRes);
 		} else {
@@ -100,7 +100,9 @@ var appRouter = function(app, db) {
 										 callback[1].name,
 										 callback[2]['stream_url'],
 										 callback[2]['title'],
-										 req.body.trackId);
+										 req.body.trackId,function(callback){
+										 	console.log(callback);
+										 });
 				}
 			});
 
@@ -232,7 +234,7 @@ var appRouter = function(app, db) {
 		});
 	}
 
-	function pushTrackNotificationToFCM(deviceId, friendId, friendName, trackUrl, trackName, trackId) {
+	function pushTrackNotificationToFCM(deviceId, friendId, friendName, trackUrl, trackName, trackId, functionCallback) {
 		request({
 			url: 'https://fcm.googleapis.com/fcm/send',
 			method: 'POST',
