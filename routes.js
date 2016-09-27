@@ -26,6 +26,7 @@ var appRouter = function(app, db) {
 		{message: "message", fbId: "sample", to: "to uId"}
 	*/
 	app.post("/v0/sendMessage", function(req, res){
+		console.log(req.body);
 		if(!req.body.message || !req.body.fbId || !req.body.to) {
 			res.send(invalidParamRes);
 		} else {
@@ -49,10 +50,10 @@ var appRouter = function(app, db) {
 					console.log(error);
 				else {
 					console.log(callback);
-					pushNotificationToFCM(callback[0].deviceId,
+					pushMessageNotificationToFCM(callback[0].deviceId,
+										 req.body.fbId,
 										 callback[1].name,
-										 callback[2]['stream_url'],
-										 callback[2]['title']);
+										 req.body.message);
 				}
 			});
 		}
@@ -95,9 +96,11 @@ var appRouter = function(app, db) {
 				else {
 					console.log(callback);
 					pushTrackNotificationToFCM(callback[0].deviceId,
+										 req.body.fbId,
 										 callback[1].name,
 										 callback[2]['stream_url'],
-										 callback[2]['title']);
+										 callback[2]['title'],
+										 req.body.trackId);
 				}
 			});
 
@@ -230,7 +233,7 @@ var appRouter = function(app, db) {
 		});
 	}
 
-	function pushTrackNotificationToFCM(deviceId, friendName, trackUrl, trackName) {
+	function pushTrackNotificationToFCM(deviceId, friendId, friendName, trackUrl, trackName, trackId) {
 		request({
 			url: 'https://fcm.googleapis.com/fcm/send',
 			method: 'POST',
@@ -243,9 +246,12 @@ var appRouter = function(app, db) {
 					"to": "" + deviceId,
 					"notification": {
 						"body": {
+							"type":"SONG",
+							"friendId": "" + friendId,
 							"friendName":"" + friendName,
 							"trackName":"" + trackName,
-							"trackUrl":"" + trackUrl
+							"trackUrl":"" + trackUrl,
+							"trackId":"" + trackId
 						}
 
 					}	
@@ -254,7 +260,7 @@ var appRouter = function(app, db) {
 		}, requestCallback);
 	}
 
-	function pushTrackNotificationToFCM(deviceId, friendName, message) {
+	function pushMessageNotificationToFCM(deviceId, friendId, friendName, message) {
 		request({
 			url: 'https://fcm.googleapis.com/fcm/send',
 			method: 'POST',
@@ -267,6 +273,8 @@ var appRouter = function(app, db) {
 					"to": "" + deviceId,
 					"notification": {
 						"body": {
+							"type":"MESSAGE",
+							"friendId": "" + friendId,
 							"friendName":"" + friendName,
 							"message":"" + message
 						}
