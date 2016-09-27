@@ -153,8 +153,7 @@ var appRouter = function(app, db) {
 		} else {
 			tracksRef.child("" + req.body.fbId).once('value',function(snapshot){
 				if(snapshot.val()==null){
-					tracksPushRef = tracksRef.child(req.body.fbId);
-					tracksPushRef.set({name: "" + req.body.name}, function(error){
+					tracksRef.child("" + req.body.fbId).update({name: "" + req.body.name}, function(error){
 						if(error)
 							res.send(unsuccessfulTransactionRes);
 						else {
