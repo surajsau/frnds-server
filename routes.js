@@ -25,7 +25,7 @@ var appRouter = function(app, db) {
 		POST: /v0/sendMessage
 		{message: "message", fbId: "sample", to: "to uId"}
 	*/
-	app.post("/v0/sendMessage", function(req, res){
+	app.put("/v0/sendMessage", function(req, res){
 		console.log(req.body);
 		if(!req.body.message || !req.body.fbId || !req.body.to) {
 			res.send(invalidParamRes);
@@ -63,7 +63,7 @@ var appRouter = function(app, db) {
 		POST: /v0/updateTrack
 		{trackId: "sample", fbId: "sample", to: "to uId"}
 	*/
-	app.post("/v0/updateTrack", function(req, res){
+	app.put("/v0/updateTrack", function(req, res){
 		if(!req.body.trackId || !req.body.fbId || !req.body.to) {
 			res.send(invalidParamRes);
 		} else {
@@ -104,40 +104,40 @@ var appRouter = function(app, db) {
 				}
 			});
 
-			async.parallel([
-				function(callback){
-					tracksRef.child("" + req.body.fbId).update(
-						{
-							trackId: "" + req.body.trackId,
-							to: "" + req.body.to
-						}, function(error){
-						if(error)
-							callback(null, false);
-						else
-							callback(null, true);
-					});
-				},
-				function(callback){
-					tracksRef.child("" + req.body.to).update(
-						{
-							from: "" + req.body.fbId
-						}, function(error){
-						if(error)
-							callback(null, false);
-						else
-							callback(null, true);
-					});
-				}
-			], function(error, callback){
-				if(error)
-					console.log(error);
-				else {
-					if(callback[0] && callback[1])
-						res.send(successfulTransaction);
-					else
-						res.send(unsuccessfulTransactionRes);
-				}
-			});
+			// async.parallel([
+			// 	function(callback){
+			// 		tracksRef.child("" + req.body.fbId).update(
+			// 			{
+			// 				trackId: "" + req.body.trackId,
+			// 				to: "" + req.body.to
+			// 			}, function(error){
+			// 			if(error)
+			// 				callback(null, false);
+			// 			else
+			// 				callback(null, true);
+			// 		});
+			// 	},
+			// 	function(callback){
+			// 		tracksRef.child("" + req.body.to).update(
+			// 			{
+			// 				from: "" + req.body.fbId
+			// 			}, function(error){
+			// 			if(error)
+			// 				callback(null, false);
+			// 			else
+			// 				callback(null, true);
+			// 		});
+			// 	}
+			// ], function(error, callback){
+			// 	if(error)
+			// 		console.log(error);
+			// 	else {
+			// 		if(callback[0] && callback[1])
+			// 			res.send(successfulTransaction);
+			// 		else
+			// 			res.send(unsuccessfulTransactionRes);
+			// 	}
+			// });
 		}
 	});
 
