@@ -2,7 +2,7 @@ var async = require('async');
 var firebase = require('firebase');
 var soundcloud = require('node-soundcloud');
 var request = require('request');
-var bigJson = require('./big');
+var bigJson = require('../big.js');
 
 soundcloud.init({
 	id: '9822cd32a85be0503a7492f74890a6fc',
