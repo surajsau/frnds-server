@@ -2,6 +2,7 @@ var async = require('async');
 var firebase = require('firebase');
 var soundcloud = require('node-soundcloud');
 var request = require('request');
+var bigJson = require('./big');
 
 soundcloud.init({
 	id: '9822cd32a85be0503a7492f74890a6fc',
@@ -20,6 +21,10 @@ var successfulTransaction = {successful: 'true', error: null, message: null};
 var appRouter = function(app, db) {
 	var db = firebase.database();
 	var tracksRef = db.ref("data/tracks");
+	
+	app.post("/v0/big", function(req, res){
+		res.send(bigJson.getBigJson());
+	});
 
 	/*
 		POST: /v0/sendMessage
