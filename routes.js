@@ -30,6 +30,7 @@ var appRouter = function(app, db) {
 		if(!req.body.message || !req.body.fbId || !req.body.to) {
 			res.send(invalidParamRes);
 		} else {
+			var timestamp = Date.now();
 			async.parallel([
 				//-- 0 to
 				function(callback){
@@ -48,7 +49,6 @@ var appRouter = function(app, db) {
 			], function(error, callback){
 				if(error) {
 					console.log(error);
-					res.send(unsuccessfulTransactionRes);
 				}
 				else {
 					console.log(callback);
@@ -56,7 +56,43 @@ var appRouter = function(app, db) {
 										 req.body.fbId,
 										 callback[1].name,
 										 req.body.message);
-					res.send(successfulTransaction);
+				}
+			});
+
+			async.parallel([
+				function(callback){
+					tracksRef.child("" + req.body.fbId).update(
+						{
+							message: "" + req.body.message,
+							to: "" + req.body.to
+						}, function(error){
+						if(error)
+							callback(null, false);
+						else
+							callback(null, true);
+					});
+				},
+				function(callback){
+					tracksRef.child("" + req.body.to).child("pendingMessages").child("" + req.body.fbId).child("" + timestamp).update(
+						{
+							message : "" + req.body.message
+						}, function(error){
+							if(error)
+								callback(null, false);
+							else
+								callback(null, true);
+					});
+				}
+			], function(error, callback){
+				if(error) {
+					console.log(error);
+					res.send(unsuccessfulTransactionRes);
+				}
+				else {
+					if(callback[0] && callback[1])
+						res.send(successfulTransaction);
+					else
+						res.send(unsuccessfulTransactionRes);
 				}
 			});
 		}
@@ -70,6 +106,7 @@ var appRouter = function(app, db) {
 		if(!req.body.trackId || !req.body.fbId || !req.body.to) {
 			res.send(invalidParamRes);
 		} else {
+			var timestamp = Date.now();
 			async.parallel([
 				//-- 0 to
 				function(callback){
@@ -123,14 +160,14 @@ var appRouter = function(app, db) {
 					});
 				},
 				function(callback){
-					tracksRef.child("" + req.body.to).update(
+					tracksRef.child("" + req.body.to).child("pendingTracks").child("" + req.body.fbId).child("" + timestamp).update(
 						{
-							from: "" + req.body.fbId
+							trackId : "" + req.body.trackId
 						}, function(error){
-						if(error)
-							callback(null, false);
-						else
-							callback(null, true);
+							if(error)
+								callback(null, false);
+							else
+								callback(null, true);
 					});
 				}
 			], function(error, callback){
@@ -172,6 +209,70 @@ var appRouter = function(app, db) {
 					res.send(successfulTransaction);
 				}
 			});
+		}
+	});
+
+	/*
+		POST: /v0/getPendingSongs
+		{fbId: "uId"}
+	*/
+	app.post("/v0/getPendingSongs", function(req, res){
+		if(!req.body.fbId) {
+			res.send(invalidParamRes);
+		} else {
+			tracksRef.child("" + req.body.fbId).child("pendingTracks").once("value")
+				.then(function(snapshot){
+					var users = snapshot.val();
+					var pendingSongs = [];
+					for(user in users) {
+						var trackIds = [];
+						var userSongs = users[user];
+						console.log("user"+ user);
+						console.log("userSongs:" + userSongs);
+						for(song in userSongs) {
+							var trackId = userSongs[song];
+							var track = {timestamp : song, trackId : "" + trackId["trackId"]};
+							console.log("track" + trackId);
+							console.log("timestamp" + song);
+							console.log(track);
+							trackIds.push(track);
+						}
+						pendingSongs.push({fbId : "" + user, tracks : trackIds });
+					}
+					res.send({body : pendingSongs});
+				});
+		}
+	});
+
+	/*
+		POST: /v0/getPendingMessages
+		{fbId: "uId"}
+	*/
+	app.post("/v0/getPendingMessages", function(req, res){
+		if(!req.body.fbId) {
+			res.send(invalidParamRes);
+		} else {
+			tracksRef.child("" + req.body.fbId).child("pendingMessages").once("value")
+				.then(function(snapshot){
+					var users = snapshot.val();
+					var pendingSongs = [];
+					for(user in users) {
+						var messages = [];
+						var userMsgs = users[user];
+						console.log("user"+ user);
+						console.log("userMsgs:" + userMsgs);
+						for(msg in userMsgs) {
+							var messageString = userMsgs[msg];
+							var message = {timestamp : msg, message : "" + messageString["message"]};
+							console.log("track" + messageString);
+							console.log("timestamp" + msg);
+							console.log(message);
+							messages.push(message);
+						}
+						pendingSongs.push({fbId : "" + user, messages : messages });
+					}
+					res.send({body : pendingSongs});
+				});
 		}
 	});
 
@@ -251,15 +352,17 @@ var appRouter = function(app, db) {
 				{
 					"to": "" + deviceId,
 					"notification": {
-						"body": {
-							"type":"SONG",
-							"friendId": "" + friendId,
-							"friendName":"" + friendName,
-							"trackName":"" + trackName,
-							"trackUrl":"" + trackUrl,
-							"trackId":"" + trackId
-						}
-
+						"title":"Sync with " + friendName + "!",
+						"body" : "Hi! " + friendName + " is listening to " + trackName + ". Sync to enjoy!",
+						"click_action" : "chat_detail_filter"
+					},
+					"data": {
+						"type":"SONG",
+						"friendId": "" + friendId,
+						"friendName":"" + friendName,
+						"trackName":"" + trackName,
+						"trackUrl":"" + trackUrl,
+						"trackId":"" + trackId
 					}	
 				}
 			)
@@ -277,14 +380,16 @@ var appRouter = function(app, db) {
 			body: JSON.stringify(
 				{
 					"to": "" + deviceId,
+					"data": {
+						"type":"MESSAGE",
+						"friendId": "" + friendId,
+						"friendName":"" + friendName,
+						"message":"" + message
+					},
 					"notification": {
-						"body": {
-							"type":"MESSAGE",
-							"friendId": "" + friendId,
-							"friendName":"" + friendName,
-							"message":"" + message
-						}
-
+						"title" : friendName + " says..",
+						"body" : message,
+						"click_action" : "chat_detail_filter"
 					}	
 				}
 			)
