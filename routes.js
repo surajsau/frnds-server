@@ -213,69 +213,81 @@ var appRouter = function(app, db) {
 	});
 
 	/*
-		POST: /v0/getPendingSongs
+		POST: /v0/getPending
 		{fbId: "uId"}
 	*/
-	app.post("/v0/getPendingSongs", function(req, res){
+	app.post("/v0/getPending", function(req, res){
 		if(!req.body.fbId) {
 			res.send(invalidParamRes);
 		} else {
-			tracksRef.child("" + req.body.fbId).child("pendingTracks").once("value")
-				.then(function(snapshot){
-					var users = snapshot.val();
-					var pendingSongs = [];
-					for(user in users) {
-						var trackIds = [];
-						var userSongs = users[user];
-						console.log("user"+ user);
-						console.log("userSongs:" + userSongs);
-						for(song in userSongs) {
-							var trackId = userSongs[song];
-							var track = {timestamp : song, trackId : "" + trackId["trackId"]};
-							console.log("track" + trackId);
-							console.log("timestamp" + song);
-							console.log(track);
-							trackIds.push(track);
-						}
-						pendingSongs.push({fbId : "" + user, tracks : trackIds });
+			async.parallel([
+					//---pending songs
+					function(callback) {
+						var pendingSongs = [];
+						tracksRef.child("" + req.body.fbId).child("pendingTracks").once("value")
+							.then(function(snapshot){
+								var users = snapshot.val();
+								for(user in users) {
+									var trackIds = [];
+									var userSongs = users[user];
+									console.log("user"+ user);
+									console.log("userSongs:" + userSongs);
+									for(song in userSongs) {
+										var trackId = userSongs[song];
+										var track = {timestamp : song, trackId : "" + trackId["trackId"]};
+										console.log("track" + trackId);
+										console.log("timestamp" + song);
+										console.log(track);
+										trackIds.push(track);
+									}
+									pendingSongs.push({fbId : "" + user, tracks : trackIds });
+
+									tracksRef.child("" + req.body.fbId).child("pendingTracks").remove();
+
+									callback(null, pendingSongs);
+								}
+							});
+					},
+
+					//---pending messages
+					function(callback) {
+						var pendingMessages = [];
+						tracksRef.child("" + req.body.fbId).child("pendingMessages").once("value")
+							.then(function(snapshot){
+								var users = snapshot.val();
+								for(user in users) {
+									var messages = [];
+									var userMsgs = users[user];
+									console.log("user"+ user);
+									console.log("userMsgs:" + userMsgs);
+									for(msg in userMsgs) {
+										var messageString = userMsgs[msg];
+										var message = {timestamp : msg, message : "" + messageString["message"]};
+										console.log("track" + messageString);
+										console.log("timestamp" + msg);
+										console.log(message);
+										messages.push(message);
+									}
+									pendingMessages.push({fbId : "" + user, messages : messages });
+
+									tracksRef.child("" + req.body.fbId).child("pendingMessages").remove();
+									
+									callback(null, pendingMessages);
+								}
+							});
 					}
-					res.send({body : pendingSongs});
+				], function(error, callback){
+					if(error) {
+						console.log(error);
+						res.send(unsuccessfulTransactionRes);
+					} else {
+						var response = {pendingSongs : callback[0], pendingMessages : callback[1]};
+						console.log(response);
+						res.send(response);
+					}
 				});
 		}
 	});
-
-	/*
-		POST: /v0/getPendingMessages
-		{fbId: "uId"}
-	*/
-	app.post("/v0/getPendingMessages", function(req, res){
-		if(!req.body.fbId) {
-			res.send(invalidParamRes);
-		} else {
-			tracksRef.child("" + req.body.fbId).child("pendingMessages").once("value")
-				.then(function(snapshot){
-					var users = snapshot.val();
-					var pendingSongs = [];
-					for(user in users) {
-						var messages = [];
-						var userMsgs = users[user];
-						console.log("user"+ user);
-						console.log("userMsgs:" + userMsgs);
-						for(msg in userMsgs) {
-							var messageString = userMsgs[msg];
-							var message = {timestamp : msg, message : "" + messageString["message"]};
-							console.log("track" + messageString);
-							console.log("timestamp" + msg);
-							console.log(message);
-							messages.push(message);
-						}
-						pendingSongs.push({fbId : "" + user, messages : messages });
-					}
-					res.send({body : pendingSongs});
-				});
-		}
-	});
-
 
 	/*
 		POST: /v0/registerGCM
