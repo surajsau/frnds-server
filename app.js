@@ -8,12 +8,13 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
 var routes = require('./routes.js')(app);
-var port = process.env.PORT || 50000;
+const PORT = process.env.PORT || 8080;
 
 //----------------------playground---------------------//
 
-app.listen(port);
-
-console.log('listening on port: ' + port);
+app.listen(PORT, () => {
+  console.log(`App listening on port ${PORT}`);
+  console.log('Press Ctrl+C to quit.');
+});
 
 //------------------------functions--------------------------//
