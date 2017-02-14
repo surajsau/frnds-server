@@ -46,14 +46,17 @@ var appRouter = function(app, db) {
 					})
 				}
 			], function(error, callback){
-				if(error)
+				if(error) {
 					console.log(error);
+					res.send(unsuccessfulTransactionRes);
+				}
 				else {
 					console.log(callback);
 					pushMessageNotificationToFCM(callback[0].deviceId,
 										 req.body.fbId,
 										 callback[1].name,
 										 req.body.message);
+					res.send(successfulTransaction);
 				}
 			});
 		}
@@ -106,40 +109,42 @@ var appRouter = function(app, db) {
 				}
 			});
 
-			// async.parallel([
-			// 	function(callback){
-			// 		tracksRef.child("" + req.body.fbId).update(
-			// 			{
-			// 				trackId: "" + req.body.trackId,
-			// 				to: "" + req.body.to
-			// 			}, function(error){
-			// 			if(error)
-			// 				callback(null, false);
-			// 			else
-			// 				callback(null, true);
-			// 		});
-			// 	},
-			// 	function(callback){
-			// 		tracksRef.child("" + req.body.to).update(
-			// 			{
-			// 				from: "" + req.body.fbId
-			// 			}, function(error){
-			// 			if(error)
-			// 				callback(null, false);
-			// 			else
-			// 				callback(null, true);
-			// 		});
-			// 	}
-			// ], function(error, callback){
-			// 	if(error)
-			// 		console.log(error);
-			// 	else {
-			// 		if(callback[0] && callback[1])
-			// 			res.send(successfulTransaction);
-			// 		else
-			// 			res.send(unsuccessfulTransactionRes);
-			// 	}
-			// });
+			async.parallel([
+				function(callback){
+					tracksRef.child("" + req.body.fbId).update(
+						{
+							trackId: "" + req.body.trackId,
+							to: "" + req.body.to
+						}, function(error){
+						if(error)
+							callback(null, false);
+						else
+							callback(null, true);
+					});
+				},
+				function(callback){
+					tracksRef.child("" + req.body.to).update(
+						{
+							from: "" + req.body.fbId
+						}, function(error){
+						if(error)
+							callback(null, false);
+						else
+							callback(null, true);
+					});
+				}
+			], function(error, callback){
+				if(error) {
+					console.log(error);
+					res.send(unsuccessfulTransactionRes);
+				}
+				else {
+					if(callback[0] && callback[1])
+						res.send(successfulTransaction);
+					else
+						res.send(unsuccessfulTransactionRes);
+				}
+			});
 		}
 	});
 
