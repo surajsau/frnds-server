@@ -7,6 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
+  "engines": {
+    "node": ">=4.3.2"
+  },
   "dependencies": {
     "async": "^2.0.1",
     "body-parser": "^1.15.2",
