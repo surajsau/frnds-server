@@ -55,7 +55,10 @@ var appRouter = function(app, db) {
 					pushMessageNotificationToFCM(callback[0].deviceId,
 										 req.body.fbId,
 										 callback[1].name,
-										 req.body.message);
+										 req.body.message,
+										 timestamp,function(callback){
+										 	console.log(callback);
+										 });
 				}
 			});
 
@@ -140,7 +143,11 @@ var appRouter = function(app, db) {
 										 callback[1].name,
 										 callback[2]['stream_url'],
 										 callback[2]['title'],
-										 req.body.trackId,function(callback){
+										 callback[2]['artwork_url'],
+										 callback[2]['user']['username'],
+										 req.body.trackId,
+										 timestamp,
+										 function(callback){
 										 	console.log(callback);
 										 });
 				}
@@ -360,7 +367,16 @@ var appRouter = function(app, db) {
 		});
 	}
 
-	function pushTrackNotificationToFCM(deviceId, friendId, friendName, trackUrl, trackName, trackId, functionCallback) {
+	function pushTrackNotificationToFCM(deviceId,
+								 	friendId,
+								  	friendName, 
+								  	trackUrl, 
+								  	trackName,
+								  	trackImageUrl,
+								  	trackArtist, 
+								  	trackId, 
+								  	timestamp, 
+								  	functionCallback) {
 		request({
 			url: 'https://fcm.googleapis.com/fcm/send',
 			method: 'POST',
@@ -374,22 +390,32 @@ var appRouter = function(app, db) {
 					"notification": {
 						"title":"Sync with " + friendName + "!",
 						"body" : "Hi! " + friendName + " is listening to " + trackName + ". Sync to enjoy!",
-						"click_action" : "chat_detail_filter"
+						"click_action": "chat_detail_filter"
 					},
 					"data": {
 						"type":"SONG",
+						"source_type":"source_notification",
 						"friendId": "" + friendId,
-						"friendName":"" + friendName,
-						"trackName":"" + trackName,
-						"trackUrl":"" + trackUrl,
-						"trackId":"" + trackId
+						"friendName": friendName,
+						"trackName": trackName,
+						"trackUrl": trackUrl,
+						"trackId":"" + trackId,
+						"timestamp": "" + timestamp,
+						"trackImageUrl" : trackImageUrl,
+						"trackArtist": trackArtist
+
 					}	
 				}
 			)
-		}, requestCallback);
+		}, functionCallback);
 	}
 
-	function pushMessageNotificationToFCM(deviceId, friendId, friendName, message) {
+	function pushMessageNotificationToFCM(deviceId, 
+										friendId, 
+										friendName, 
+										message, 
+										timestamp, 
+										functionCallback) {
 		request({
 			url: 'https://fcm.googleapis.com/fcm/send',
 			method: 'POST',
@@ -402,18 +428,20 @@ var appRouter = function(app, db) {
 					"to": "" + deviceId,
 					"data": {
 						"type":"MESSAGE",
+						"source_type":"source_notification",
 						"friendId": "" + friendId,
-						"friendName":"" + friendName,
-						"message":"" + message
+						"friendName": friendName,
+						"message": message,
+						"timestamp":"" + timestamp
 					},
 					"notification": {
 						"title" : friendName + " says..",
 						"body" : message,
-						"click_action" : "chat_detail_filter"
+						"click_action": "chat_detail_filter"
 					}	
 				}
 			)
-		}, requestCallback);
+		}, functionCallback);
 	}
 
 }
