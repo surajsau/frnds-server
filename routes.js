@@ -227,24 +227,28 @@ var appRouter = function(app, db) {
 						tracksRef.child("" + req.body.fbId).child("pendingTracks").once("value")
 							.then(function(snapshot){
 								var users = snapshot.val();
-								for(user in users) {
-									var trackIds = [];
-									var userSongs = users[user];
-									console.log("user"+ user);
-									console.log("userSongs:" + userSongs);
-									for(song in userSongs) {
-										var trackId = userSongs[song];
-										var track = {timestamp : song, trackId : "" + trackId["trackId"]};
-										console.log("track" + trackId);
-										console.log("timestamp" + song);
-										console.log(track);
-										trackIds.push(track);
+								if(users) {
+									for(user in users) {
+										var trackIds = [];
+										var userSongs = users[user];
+										console.log("user"+ user);
+										console.log("userSongs:" + userSongs);
+										for(song in userSongs) {
+											var trackId = userSongs[song];
+											var track = {timestamp : song, trackId : "" + trackId["trackId"]};
+											console.log("track" + trackId);
+											console.log("timestamp" + song);
+											console.log(track);
+											trackIds.push(track);
+										}
+										pendingSongs.push({fbId : "" + user, tracks : trackIds });
+
+										tracksRef.child("" + req.body.fbId).child("pendingTracks").remove();
+
+										callback(null, pendingSongs);
 									}
-									pendingSongs.push({fbId : "" + user, tracks : trackIds });
-
-									tracksRef.child("" + req.body.fbId).child("pendingTracks").remove();
-
-									callback(null, pendingSongs);
+								} else {
+									callback(null, null);
 								}
 							});
 					},
@@ -255,24 +259,28 @@ var appRouter = function(app, db) {
 						tracksRef.child("" + req.body.fbId).child("pendingMessages").once("value")
 							.then(function(snapshot){
 								var users = snapshot.val();
-								for(user in users) {
-									var messages = [];
-									var userMsgs = users[user];
-									console.log("user"+ user);
-									console.log("userMsgs:" + userMsgs);
-									for(msg in userMsgs) {
-										var messageString = userMsgs[msg];
-										var message = {timestamp : msg, message : "" + messageString["message"]};
-										console.log("track" + messageString);
-										console.log("timestamp" + msg);
-										console.log(message);
-										messages.push(message);
-									}
-									pendingMessages.push({fbId : "" + user, messages : messages });
+								if(users) {
+									for(user in users) {
+										var messages = [];
+										var userMsgs = users[user];
+										console.log("user"+ user);
+										console.log("userMsgs:" + userMsgs);
+										for(msg in userMsgs) {
+											var messageString = userMsgs[msg];
+											var message = {timestamp : msg, message : "" + messageString["message"]};
+											console.log("track" + messageString);
+											console.log("timestamp" + msg);
+											console.log(message);
+											messages.push(message);
+										}
+										pendingMessages.push({fbId : "" + user, messages : messages });
 
-									tracksRef.child("" + req.body.fbId).child("pendingMessages").remove();
-									
-									callback(null, pendingMessages);
+										tracksRef.child("" + req.body.fbId).child("pendingMessages").remove();
+										
+										callback(null, pendingMessages);
+									}
+								} else {
+									callback(null, null)
 								}
 							});
 					}
