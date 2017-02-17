@@ -144,6 +144,7 @@ var appRouter = function(app, db) {
 										 callback[2]['stream_url'],
 										 callback[2]['title'],
 										 callback[2]['artwork_url'],
+										 callback[2]['permalink_url'],
 										 callback[2]['user']['username'],
 										 req.body.trackId,
 										 timestamp,
@@ -373,6 +374,7 @@ var appRouter = function(app, db) {
 								  	trackUrl, 
 								  	trackName,
 								  	trackImageUrl,
+								  	trackShareUrl,
 								  	trackArtist, 
 								  	trackId, 
 								  	timestamp, 
@@ -402,6 +404,7 @@ var appRouter = function(app, db) {
 						"trackId":"" + trackId,
 						"timestamp": "" + timestamp,
 						"trackImageUrl" : trackImageUrl,
+						"trackShareUrl": trackShareUrl,
 						"trackArtist": trackArtist
 
 					}	
